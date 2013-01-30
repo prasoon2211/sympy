@@ -1,16 +1,17 @@
 """Algorithms for computing symbolic roots of polynomials. """
 
-from sympy.core.symbol import Dummy
-from sympy.core import S, I
+from sympy.core.symbol import Dummy, Symbol
+from sympy.core import S, I, pi
 from sympy.core.sympify import sympify
 from sympy.core.numbers import Rational, igcd
 
 from sympy.ntheory import divisors, isprime, nextprime
-from sympy.functions import exp, sqrt
+from sympy.functions import exp, sqrt, re, im, Abs, cos, sin
 
-from sympy.polys.polytools import Poly, cancel, factor, gcd_list
+from sympy.polys.polytools import Poly, cancel, factor, gcd_list, discriminant
 from sympy.polys.specialpolys import cyclotomic_poly
 from sympy.polys.polyerrors import PolynomialError, GeneratorsNeeded, DomainError
+from sympy.polys.polyquinticconst import *
 
 from sympy.simplify import simplify
 from sympy.utilities import default_sort_key
@@ -313,6 +314,133 @@ def roots_cyclotomic(f, factor=False):
     return sorted(roots, key=default_sort_key)
 
 
+def roots_quintic(f):
+    """
+    Calulate exact roots of a solvable quintic
+    """
+    import pdb; pdb.set_trace()
+    result = None
+    coeff_5, coeff_4, p, q, r, s = f.all_coeffs()
+
+    # Eqn must me of the for x^5 + px^3 + qx^2 + rx + s
+    if coeff_4:
+        return result
+        
+    if coeff_5 != 1:
+        l = [p/coeff_5, q/coeff_5, r/coeff_5, s/coeff_5]
+        for coeff in l:
+            if not coeff.is_integer:
+                return result
+        f = Poly(f/coeff_5)
+    coeff_5, coeff_4, p, q, r, s = f.all_coeffs()
+
+    # Eqn standardised. Algo for solving starts here
+    if not f.is_irreducible:
+        return result
+
+    f20 = Poly(getf20(p, q, r, s))
+    # Check if f20 has linear factors over domain Z
+    if f20.is_irreducible:
+        return result
+        
+    # Now, we know that f is solvable
+    f20_factors = f20.factor_list()
+    for factor in f20_factors[1]:
+        poly = factor[0]
+        if poly.is_linear:
+            theta = poly.root(0)
+            break
+    # d = descriminant, dd = sqrt(d)
+    d = discriminant(f)
+    delta = dd = sqrt(d)
+    # zeta = a fifth root of unity
+    zeta = cos(2*pi/5) + I*sin(2*pi/5)
+    F = getF(p, q, r, s)
+    T = getT(p, q, r, s, theta, d, F)
+
+    alpha = T['1'] + T['2']*dd
+    alpha_bar = T['1'] - T['2']*dd
+    beta = T['3'] + T['4']*dd
+    beta_bar = T['3'] - T['4']*dd
+
+    disc = alpha**2 - 4*beta
+    disc_bar = alpha_bar**2 - 4*beta_bar
+
+    l0 = getl0(p, q, r, s, theta, F)
+
+    """
+    alpha = simplify(alpha)
+    alpha_bar = simplify(alpha_bar)
+    beta = simplify(beta)
+    beta_bar = simplify(beta_bar)
+
+    disc = simplify(disc)
+    disc_bar = simplify(disc_bar)
+    """
+
+    l1 = simplify((-alpha + sqrt(disc)) / S(2))
+    l4 = simplify((-alpha - sqrt(disc)) / S(2))
+
+    l2 = simplify((-alpha_bar + sqrt(disc_bar)) / S(2))
+    l3 = simplify((-alpha_bar - sqrt(disc_bar)) / S(2))
+    
+    order = getOrder(p, q, r, s, theta, d, F)
+    test = (order*delta) - ( (l1 - l4)*(l2 - l3) )
+    # Comparing floats
+    if Abs(test.n()) > S(0.00001):
+        temp = l2
+        l2 = l3
+        l3 = temp 
+
+    # Now we have correct order of l's
+    R1 = l0 + l1*zeta + l2*zeta**2 + l3*zeta**3 + l4*zeta**4
+    R2 = l0 + l3*zeta + l1*zeta**2 + l4*zeta**3 + l2*zeta**4
+    R3 = l0 + l2*zeta + l4*zeta**2 + l1*zeta**3 + l3*zeta**4
+    R4 = l0 + l4*zeta + l3*zeta**2 + l2*zeta**3 + l1*zeta**4
+
+    Res = [None]*5
+    pdb.set_trace()
+    sol = Symbol('sol')
+    # Solve imported here. Causing problems if imported as 'solve'
+    # and hence the changed name
+    from sympy.solvers.solvers import solve as solve_five
+    Res[1] = solve_five(sol**5 - R1, sol)
+    Res[2] = solve_five(sol**5 - R2, sol)
+    Res[3] = solve_five(sol**5 - R3, sol)
+    Res[4] = solve_five(sol**5 - R4, sol)
+
+    r1 = Res[1][0]
+    for root in Res[2]:
+        if Abs(im(r1*root)) < S(0.00001):
+            r4 = root
+            break
+    u, v = getuv(p, q, r, s, d, theta, F)
+
+    testplus = (u + v*delta*sqrt(5)).n()
+    testminus = (u - v*delta*sqrt(5)).n()
+    r2 = r3 = None
+
+    for r2temp in Res[2]:
+        for r3temp in Res[3]:
+            test_1 = Abs(r1*r2temp**2 + r4*r3temp**2 - testplus)
+            test_2 = Abs(r3temp*r1**2 + r2temp*r4**2 - testminus)
+            if test_1 < S(0.00001) and test_2 < S(0.00001):
+                r2 = r2temp
+                r3 = r3temp
+                break
+        if r2:
+            break
+
+    # Now, we have r's so we can get roots
+    x1 = S(r1 + r2 + r3 + r4)/5
+    x2 = S(r1*zeta**4 + r2*zeta**3 + r3*zeta**2 + r4*zeta)/5
+    x3 = S(r1*zeta**3 + r2*zeta + r3*zeta**4 + r4*zeta**2)/5
+    x4 = S(r1*zeta**2 + r2*zeta**4 + r3*zeta + r4*zeta**3)/5
+    x5 = S(r1*zeta + r2*zeta**2 + r3*zeta**3 + r4*zeta**4)/5
+
+    soln = [x1, x2, x3, x4, x5]
+    return soln
+    
 def roots_rational(f):
     """Returns a list of rational roots of a polynomial."""
     domain = f.get_domain()
@@ -501,6 +629,7 @@ def roots(f, *gens, **flags):
     auto = flags.pop('auto', True)
     cubics = flags.pop('cubics', True)
     quartics = flags.pop('quartics', True)
+    quintics = flags.pop('quintics', False)
     multiple = flags.pop('multiple', False)
     filter = flags.pop('filter', None)
     predicate = flags.pop('predicate', None)
