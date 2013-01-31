@@ -318,7 +318,6 @@ def roots_quintic(f):
     """
     Calulate exact roots of a solvable quintic
     """
-    import pdb; pdb.set_trace()
     result = None
     coeff_5, coeff_4, p, q, r, s = f.all_coeffs()
 
@@ -333,13 +332,12 @@ def roots_quintic(f):
                 return result
         f = Poly(f/coeff_5)
     quintic = PolyQuintic(f)
-    coeff_5, coeff_4, p, q, r, s = f.all_coeffs()
 
     # Eqn standardised. Algo for solving starts here
     if not f.is_irreducible:
         return result
 
-    f20 = Poly(getf20(p, q, r, s))
+    f20 = quintic.getf20()
     # Check if f20 has linear factors over domain Z
     if f20.is_irreducible:
         return result
@@ -355,8 +353,7 @@ def roots_quintic(f):
     delta = sqrt(d)
     # zeta = a fifth root of unity
     zeta = cos(2*pi/5) + I*sin(2*pi/5)
-    F = getF(p, q, r, s)
-    T = getT(p, q, r, s, theta, d, F)
+    T = quintic.getT(theta, d)
 
     alpha = T['1'] + T['2']*delta
     alpha_bar = T['1'] - T['2']*delta
@@ -366,7 +363,7 @@ def roots_quintic(f):
     disc = alpha**2 - 4*beta
     disc_bar = alpha_bar**2 - 4*beta_bar
 
-    l0 = getl0(p, q, r, s, theta, F)
+    l0 = quintic.getl0(theta)
 
     l1 = simplify((-alpha + sqrt(disc)) / S(2))
     l4 = simplify((-alpha - sqrt(disc)) / S(2))
@@ -374,7 +371,7 @@ def roots_quintic(f):
     l2 = simplify((-alpha_bar + sqrt(disc_bar)) / S(2))
     l3 = simplify((-alpha_bar - sqrt(disc_bar)) / S(2))
     
-    order = getOrder(p, q, r, s, theta, d, F)
+    order = quintic.getOrder(theta, d)
     test = (order*delta) - ( (l1 - l4)*(l2 - l3) )
     # Comparing floats
     if Abs(test.n()) > S(0.00001):
@@ -414,45 +411,38 @@ def roots_quintic(f):
         if Abs(im(r1*root)) < S(0.00001):
             r4 = root
             break
-    u, v = getuv(p, q, r, s, d, theta, F)
+    u, v = quintic.getuv(theta, d)
     
     testplus = (u + v*delta*sqrt(5)).n()
     testminus = (u - v*delta*sqrt(5)).n()
 
-    # Exact numbers suffixed with _n
+    # Evaluated numbers suffixed with _n
     # We will use evaluated numbers for calculation. Much faster.
-    r1_n = r1
-    r4_n = r4
-    r1 = r1.n()
-    r4 = r4.n()
-    r2_n = r3_n = None
+    r1_n = r1.n()
+    r4_n = r4.n()
+    r2 = r3 = None
 
     for r2temp in Res[2]:
         for r3temp in Res[3]:
             # Again storig away exact number and using 
             # evaluated numbers in computations
-            r2temp_n = r2temp
-            r3temp_n = r3temp
+            r2temp_n = r2temp.n()
+            r3temp_n = r3temp.n()
 
-            r2temp = r2temp.n()
-            r3temp = r3temp.n()
-
-            if( Abs(r1*r2temp**2 + r4*r3temp**2 - testplus) < S(0.00001)
-                and
-                Abs(r3temp*r1**2 + r2temp*r4**2 - testminus) < S(0.00001) ):
-                r2_n = r2temp_n
-                r3_n = r3temp_n
+            if( Abs(r1_n*r2temp_n**2 + r4_n*r3temp_n**2 - testplus) < S(0.00001) and
+                Abs(r3temp_n*r1_n**2 + r2temp_n*r4_n**2 - testminus) < S(0.00001) ):
+                r2 = r2temp
+                r3 = r3temp
                 break
-        if r2_n:
+        if r2:
             break
 
-    pdb.set_trace()
     # Now, we have r's so we can get roots
-    x1 = S(r1_n + r2_n + r3_n + r4_n)/5
-    x2 = S(r1_n*zeta**4 + r2_n*zeta**3 + r3_n*zeta**2 + r4_n*zeta)/5
-    x3 = S(r1_n*zeta**3 + r2_n*zeta + r3_n*zeta**4 + r4_n*zeta**2)/5
-    x4 = S(r1_n*zeta**2 + r2_n*zeta**4 + r3_n*zeta + r4_n*zeta**3)/5
-    x5 = S(r1_n*zeta + r2_n*zeta**2 + r3_n*zeta**3 + r4_n*zeta**4)/5
+    x1 = S(r1 + r2 + r3 + r4)/5
+    x2 = S(r1*zeta**4 + r2*zeta**3 + r3*zeta**2 + r4*zeta)/5
+    x3 = S(r1*zeta**3 + r2*zeta + r3*zeta**4 + r4*zeta**2)/5
+    x4 = S(r1*zeta**2 + r2*zeta**4 + r3*zeta + r4*zeta**3)/5
+    x5 = S(r1*zeta + r2*zeta**2 + r3*zeta**3 + r4*zeta**4)/5
 
     soln = [x1, x2, x3, x4, x5]
     return soln
