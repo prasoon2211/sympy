@@ -11,7 +11,7 @@ from sympy.functions import exp, sqrt, re, im, Abs, cos, sin
 from sympy.polys.polytools import Poly, cancel, factor, gcd_list, discriminant
 from sympy.polys.specialpolys import cyclotomic_poly
 from sympy.polys.polyerrors import PolynomialError, GeneratorsNeeded, DomainError
-from sympy.polys.polyquinticconst import *
+from sympy.polys.polyquinticconst import PolyQuintic
 
 from sympy.simplify import simplify
 from sympy.utilities import default_sort_key
@@ -324,7 +324,7 @@ def roots_quintic(f):
     # Eqn must me of the for x^5 + px^3 + qx^2 + rx + s
     if coeff_4:
         return result
-        
+
     if coeff_5 != 1:
         l = [p/coeff_5, q/coeff_5, r/coeff_5, s/coeff_5]
         for coeff in l:
@@ -341,7 +341,7 @@ def roots_quintic(f):
     # Check if f20 has linear factors over domain Z
     if f20.is_irreducible:
         return result
-        
+
     # Now, we know that f is solvable
     f20_factors = f20.factor_list()
     for factor in f20_factors[1]:
@@ -370,14 +370,14 @@ def roots_quintic(f):
 
     l2 = simplify((-alpha_bar + sqrt(disc_bar)) / S(2))
     l3 = simplify((-alpha_bar - sqrt(disc_bar)) / S(2))
-    
+
     order = quintic.getOrder(theta, d)
     test = (order*delta) - ( (l1 - l4)*(l2 - l3) )
     # Comparing floats
     if Abs(test.n()) > S(0.00001):
         temp = l2
         l2 = l3
-        l3 = temp 
+        l3 = temp
 
     # Now we have correct order of l's
     R1 = l0 + l1*zeta + l2*zeta**2 + l3*zeta**3 + l4*zeta**4
@@ -412,7 +412,7 @@ def roots_quintic(f):
             r4 = root
             break
     u, v = quintic.getuv(theta, d)
-    
+
     testplus = (u + v*delta*sqrt(5)).n()
     testminus = (u - v*delta*sqrt(5)).n()
 
@@ -424,7 +424,7 @@ def roots_quintic(f):
 
     for r2temp in Res[2]:
         for r3temp in Res[3]:
-            # Again storig away exact number and using 
+            # Again storig away exact number and using
             # evaluated numbers in computations
             r2temp_n = r2temp.n()
             r3temp_n = r3temp.n()
@@ -446,7 +446,7 @@ def roots_quintic(f):
 
     soln = [x1, x2, x3, x4, x5]
     return soln
-    
+
 def roots_rational(f):
     """Returns a list of rational roots of a polynomial."""
     domain = f.get_domain()
