@@ -98,6 +98,8 @@ class Pow(Expr):
                 if b is S.One:  # already handled e == 0 above
                     return S.One
                 return S.NaN
+            elif b is S.Zero and e not in [S.Infinity, S.NegativeInfinity]:
+                return S.Zero   # Cases with NaN already dealt
             else:
                 obj = b._eval_power(e)
                 if obj is not None:
